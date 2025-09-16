@@ -1,3 +1,6 @@
+package com.example.oauthloginpractice.config
+
+import com.example.oauthloginpractice.application.service.CustomOAuth2UserService
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -9,27 +12,39 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val customOAuth2UserService: CustomOAuth2UserService
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            .authorizeHttpRequests { auth ->
-                auth
+            .authorizeHttpRequests {
+                it
                     // 공통 정적 리소스( /css/**, /js/**, /images/**, /webjars/** 등 ) 허용
                     .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                     // 개별 허용 경로
-                    .requestMatchers(
-                        "/", "/error", "/favicon.ico",
-                        "/webjars/**"       // 필요시 유지
+                    .requestMatchers("/", "/index.html", "/favicon.ico",
+                        "/webjars/**", "/css/**", "/js/**", "/images/**",
+                        "/h2-console/**",
+                        "/ping"
                     ).permitAll()
                     .anyRequest().authenticated()
             }
-            .exceptionHandling { ex ->
-                ex.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+            .exceptionHandling {
+                it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             }
-            .oauth2Login { /* 기본 설정이면 비워도 OK */ }
-
+            .csrf { csrf ->
+                csrf.ignoringRequestMatchers(PathRequest.toH2Console())
+            }
+            .headers { headers ->
+                headers.frameOptions { it.sameOrigin() }
+            }
+            .oauth2Login {
+                it.userInfoEndpoint { endpoints ->
+                    endpoints.userService(customOAuth2UserService)
+                }
+            }
         return http.build()
     }
 }
