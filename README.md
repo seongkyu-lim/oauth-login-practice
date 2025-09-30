@@ -1,0 +1,2 @@
+- oauth2/client 사용하여 github, google 로그인 구현.
+- [ ] firebae auth 적용
